@@ -131,10 +131,10 @@ namespace namedargs {
     }
 
     constexpr std::string_view tokenize_string_literal(std::string_view sv) {
-      const std::size_t pos = sv.find_first_not_of('\'', 1);
+      const std::size_t pos = sv.find_first_of('\'', 1);
       if (pos == std::string_view::npos)
         throw parse_error("unclosed string literal");
-      tokens_.push_back({TokenKind::str, sv.substr(1, pos), {}});
+      tokens_.push_back({TokenKind::str, sv.substr(1, pos - 1), {}});
       return sv.substr(pos + 1);
     }
 
@@ -222,7 +222,7 @@ namespace namedargs {
     constexpr std::pair<std::span<Token>, std::string_view>
     parse_ident(std::span<Token> toks) {
       if (const auto& tok = toks.front(); tok.kind == TokenKind::ident) {
-        if (auto it = find(args_, tok.sv); it != args_.end())
+        if (auto it = find(args_, tok.sv); it == args_.end())
           return {toks.subspan(1), tok.sv};
         else
           throw parse_error("argument already exists");

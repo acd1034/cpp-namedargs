@@ -14,6 +14,7 @@ namespace namedargs {
     str,   // String literals
     ident, // Identifiers
     punct, // Punctuators
+    eof,   // End-of-file markers
   };
 
   struct Token {
@@ -144,6 +145,7 @@ namespace namedargs {
 
         throw parse_error("unexpected character");
       }
+      tokens_.push_back({TokenKind::eof, sv, {}});
       return sv;
     }
   };

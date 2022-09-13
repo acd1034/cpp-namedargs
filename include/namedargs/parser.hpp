@@ -97,11 +97,10 @@ namespace namedargs {
 
   struct ArgParser {
   private:
+    using ArgType = std::variant<std::int64_t, std::string_view>;
     std::string_view input_{};
     std::vector<Token> tokens_{};
-    std::vector<
-      std::pair<std::string_view, std::variant<std::int64_t, std::string_view>>>
-      args_{};
+    std::vector<std::pair<std::string_view, ArgType>> args_{};
 
   public:
     constexpr explicit ArgParser(std::string_view input)
@@ -212,12 +211,13 @@ namespace namedargs {
     }
 
     // primary = str | num
-    constexpr std::span<Token> parse_primary(std::span<Token> toks) {
+    constexpr std::pair<std::span<Token>, ArgType>
+    parse_primary(std::span<Token> toks) {
       switch (toks.front().kind) {
       case TokenKind::str:
-        return parse_str(toks);
+        return {toks.subspan(1), toks.sv};
       case TokenKind::num:
-        return parse_num(toks);
+        return {toks.subspan(1), toks.num};
       default:
         throw parse_error(
           "unexpected token; expecting TokenKind::str or TokenKind::num");

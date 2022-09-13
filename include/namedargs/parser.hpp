@@ -1,7 +1,8 @@
 /// @file fundamental.hpp
 #pragma once
 #include <functional> // std::invoke
-#include <stdexcept>  // std::runtime_error
+#include <span>
+#include <stdexcept> // std::runtime_error
 #include <string>
 #include <string_view>
 #include <vector>
@@ -13,7 +14,6 @@ namespace namedargs {
     str,   // String literals
     ident, // Identifiers
     punct, // Punctuators
-    eof,   // End-of-file markers
   };
 
   struct Token {
@@ -39,9 +39,7 @@ namespace namedargs {
     return ('a' <= c and c <= 'z') or ('A' <= c and c <= 'Z') or c == '_';
   }
 
-  constexpr bool isident2(char c) {
-    return isident1(c) or ('0' <= c and c <= '9');
-  }
+  constexpr bool isident2(char c) { return isident1(c) or isdigit(c); }
 
   constexpr bool ispunct(char c) {
     return ('!' <= c and c <= '/') or (':' <= c and c <= '@')
@@ -68,16 +66,19 @@ namespace namedargs {
   private:
     std::string_view input_{};
     std::vector<Token> tokens_{};
+    std::vector<
+      std::pair<std::string_view, std::variant<std::int64_t, std::string_view>>>
+      args_{};
 
   public:
     constexpr explicit ArgParser(std::string_view input)
       : input_(std::move(input)) {}
 
+    // tokenize
+
     constexpr std::string_view skip_whitespaces(std::string_view sv) {
-      std::size_t i = 0;
-      while (namedargs::isspace(sv[i]))
-        ++i;
-      return sv.substr(i);
+      const std::size_t pos = find_if_not(sv, isspace, 1);
+      return sv.substr(pos);
     }
 
     constexpr std::string_view tokenize_number(std::string_view sv) {
@@ -112,7 +113,10 @@ namespace namedargs {
       std::string_view sv = input_;
       while (not sv.empty()) {
         // Skip whitespace characters.
+        if (namedargs::isspace(sv.front())) {
         sv = skip_whitespaces(sv);
+          continue;
+        }
 
         // Numeric literal
         if (namedargs::isdigit(sv.front())) {
@@ -137,6 +141,8 @@ namespace namedargs {
           sv = tokenize_punct(sv);
           continue;
         }
+
+        throw parse_error("unexpected character");
       }
       return sv;
     }

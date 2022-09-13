@@ -1,6 +1,6 @@
 /// @file fundamental.hpp
 #pragma once
-#include <charconv> // std::from_chars
+#include <stdexcept> // std::runtime_error
 #include <string>
 #include <string_view>
 #include <vector>
@@ -11,12 +11,21 @@ namespace namedargs {
     ident, // Identifiers
     punct, // Punctuators
     num,   // Numeric literals
+    str,   // String literals
     eof,   // End-of-file markers
   };
 
   struct Token {
     TokenKind kind;
-    std::int64_t num;
+    std::string_view sv;
+    std::int64_t num; // Used if TokenKind::num
+  };
+
+  struct parse_error : std::runtime_error {
+    explicit parse_error(const std::string& msg) : std::runtime_error(msg) {}
+    explicit parse_error(const char* msg) : std::runtime_error(msg) {}
+    parse_error(const parse_error&) noexcept = default;
+    ~parse_error() noexcept override = default;
   };
 
   constexpr bool isspace(char c) {
@@ -52,23 +61,38 @@ namespace namedargs {
     constexpr std::string_view tokenize_number(std::string_view sv) {
       const char* start = sv.data();
       const auto [num, ptr] = namedargs::from_chars(start, start + sv.size());
-      tokens_.push_back({TokenKind::num, num});
-      return sv.substr(ptr - start);
+      // TODO: throw parse_error
+      const std::size_t size = icast<std::size_t>(ptr - start);
+      tokens_.push_back({TokenKind::num, sv.substr(0, size), num});
+      return sv.substr(size);
     }
 
-    constexpr std::string_view tokenize_impl(std::string_view sv) {
-      // Skip whitespace characters.
-      sv = skip_whitespaces(sv);
-
-      // Numeric literal
-      if (namedargs::isdigit(sv.front()))
-        return tokenize_number(sv);
+    constexpr std::string_view tokenize_string_literal(std::string_view sv) {
+      const std::size_t pos = sv.find_first_not_of('\'', 1);
+      if (pos == std::string_view::npos)
+        throw parse_error("unclosed string literal");
+      tokens_.push_back({TokenKind::str, sv.substr(1, pos), {}});
+      return sv.substr(pos + 1);
     }
 
     constexpr std::string_view tokenize() {
       std::string_view sv = input_;
-      while (not sv.empty())
-        sv = tokenize_impl(sv);
+      while (not sv.empty()) {
+        // Skip whitespace characters.
+        sv = skip_whitespaces(sv);
+
+        // Numeric literal
+        if (namedargs::isdigit(sv.front())) {
+          sv = tokenize_number(sv);
+          continue;
+        }
+
+        // String literal
+        if (sv.front() == '\'') {
+          sv = tokenize_string_literal(sv);
+          continue;
+        }
+      }
       return sv;
     }
   };

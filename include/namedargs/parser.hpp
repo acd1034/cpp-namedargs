@@ -11,6 +11,9 @@
 #include <namedargs/fundamental.hpp>
 
 namespace namedargs {
+  template <class T>
+  struct ArgParserTraits;
+
   enum class TokenKind {
     num,   // Numeric literals
     str,   // String literals
@@ -101,6 +104,16 @@ namespace namedargs {
   constexpr auto find(const std::vector<std::pair<T, U>>& v, const T& key) {
     return std::find_if(v.begin(), v.end(),
                         [&key](const auto& x) { return x.first == key; });
+  }
+
+  template <class T, class U>
+  constexpr auto binary_search(const std::vector<std::pair<T, U>>& v,
+                               const T& key) {
+    auto it = std::ranges::lower_bound(v.begin(), v.end(), key, {},
+                                       [](const auto& x) { return x.first; });
+    if (it == v.end() or key < it->first)
+      return v.end();
+    return it;
   }
 
   struct ArgParser {
@@ -249,5 +262,40 @@ namespace namedargs {
       toks = parse_args(toks);
       return toks;
     }
+
+    constexpr void execute() {
+      tokenize();
+      parse();
+      std::sort(args_.begin(), args_.end(), [](const auto& x, const auto& y) {
+        return x.first.compare(y.first) < 0;
+      });
+    }
+
+    template <class T, class U>
+    constexpr T& assign_or(T& out, std::string_view key, U&& value) const {
+      auto it = binary_search(args_, key);
+      if (it == args_.end())
+        return out = std::forward<U>(value);
+      const auto& v = it->second;
+      // clang-format off
+      static_assert(std::assignable_from<T&, decltype(std::get<0>(v))> or
+                    std::assignable_from<T&, decltype(std::get<1>(v))>);
+      // clang-format on
+      if (v.index() == 0) {
+        if constexpr (std::assignable_from<T&, decltype(std::get<0>(v))>)
+          return out = std::get<0>(v);
+      } else {
+        if constexpr (std::assignable_from<T&, decltype(std::get<1>(v))>)
+          return out = std::get<1>(v);
+      }
+      throw parse_error("value is not assignable");
+    }
   };
+
+  template <class T>
+  constexpr T parse_args(std::string_view sv) {
+    ArgParser parser(sv);
+    parser.execute();
+    return ArgParserTraits<T>::convert(parser);
+  }
 } // namespace namedargs

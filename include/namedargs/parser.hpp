@@ -115,7 +115,7 @@ namespace namedargs {
       while (not sv.empty()) {
         // Skip whitespace characters.
         if (namedargs::isspace(sv.front())) {
-        sv = skip_whitespaces(sv);
+          sv = skip_whitespaces(sv);
           continue;
         }
 
@@ -147,6 +147,55 @@ namespace namedargs {
       }
       tokens_.push_back({TokenKind::eof, sv, {}});
       return sv;
+    }
+
+    // parse
+
+    // args = stmt?
+    constexpr std::span<Token> parse_args(std::span<Token> toks) {
+      if (consume(TokenKind::eof))
+        return toks;
+      toks = parse_stmt(toks);
+      expect(TokenKind::eof);
+      return toks;
+    }
+
+    // stmt = assign ("," assign)*
+    constexpr std::span<Token> parse_stmt(std::span<Token> toks) {
+      toks = parse_assign(toks);
+      for (;;) {
+        if (consume(","))
+          toks = parse_assign(toks);
+        else
+          return toks;
+      }
+    }
+
+    // assign = ident "=" primary
+    constexpr std::span<Token> parse_assign(std::span<Token> toks) {
+      toks = parse_ident(toks);
+      expect("=");
+      toks = parse_primary(toks);
+      return toks;
+    }
+
+    // primary = str | num
+    constexpr std::span<Token> parse_primary(std::span<Token> toks) {
+      switch (toks.front().kind) {
+      case TokenKind::str:
+        return parse_str(toks);
+      case TokenKind::num:
+        return parse_num(toks);
+      default:
+        throw parse_error(
+          "unexpected token; expecting TokenKind::str or TokenKind::num");
+      }
+    }
+
+    constexpr std::span<Token> parse() {
+      std::span<Token> toks(tokens_);
+      toks = parse_args(toks);
+      return toks;
     }
   };
 } // namespace namedargs

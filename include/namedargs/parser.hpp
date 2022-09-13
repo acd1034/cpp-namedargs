@@ -1,6 +1,7 @@
 /// @file fundamental.hpp
 #pragma once
-#include <stdexcept> // std::runtime_error
+#include <functional> // std::invoke
+#include <stdexcept>  // std::runtime_error
 #include <string>
 #include <string_view>
 #include <vector>
@@ -8,10 +9,10 @@
 
 namespace namedargs {
   enum class TokenKind {
-    ident, // Identifiers
     punct, // Punctuators
     num,   // Numeric literals
     str,   // String literals
+    ident, // Identifiers
     eof,   // End-of-file markers
   };
 
@@ -34,6 +35,23 @@ namespace namedargs {
   }
 
   constexpr bool isdigit(char c) { return '0' <= c and c <= '9'; }
+
+  constexpr bool isident1(char c) {
+    return ('a' <= c and c <= 'z') or ('A' <= c and c <= 'Z') or c == '_';
+  }
+
+  constexpr bool isident2(char c) {
+    return isident1(c) or ('0' <= c and c <= '9');
+  }
+
+  template <class Pred>
+  constexpr std::size_t find_if_not(std::string_view sv, Pred pred,
+                                    std::size_t pos = 0) {
+    for (; pos < sv.size(); ++pos)
+      if (not std::invoke(pred, sv[pos]))
+        return pos;
+    return std::string_view::npos;
+  }
 
   constexpr std::pair<std::int64_t, const char*>
   from_chars(const char* first, const char* last, std::int64_t num = 0) {
@@ -75,6 +93,12 @@ namespace namedargs {
       return sv.substr(pos + 1);
     }
 
+    constexpr std::string_view tokenize_identifier(std::string_view sv) {
+      const std::size_t pos = find_if_not(sv, isident2, 1);
+      tokens_.push_back({TokenKind::ident, sv.substr(0, pos), {}});
+      return sv.substr(pos);
+    }
+
     constexpr std::string_view tokenize() {
       std::string_view sv = input_;
       while (not sv.empty()) {
@@ -88,8 +112,14 @@ namespace namedargs {
         }
 
         // String literal
-        if (sv.front() == '\'') {
+        if (sv.starts_with('\'')) {
           sv = tokenize_string_literal(sv);
+          continue;
+        }
+
+        // Identifier
+        if (isident1(sv.front())) {
+          sv = tokenize_identifier(sv);
           continue;
         }
       }

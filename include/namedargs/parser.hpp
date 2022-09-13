@@ -9,10 +9,10 @@
 
 namespace namedargs {
   enum class TokenKind {
-    punct, // Punctuators
     num,   // Numeric literals
     str,   // String literals
     ident, // Identifiers
+    punct, // Punctuators
     eof,   // End-of-file markers
   };
 
@@ -30,8 +30,7 @@ namespace namedargs {
   };
 
   constexpr bool isspace(char c) {
-    constexpr std::string_view space = " \f\n\r\t\v";
-    return space.find(c) != std::string_view::npos;
+    return ('\t' <= c and c <= '\r') or c == ' ';
   }
 
   constexpr bool isdigit(char c) { return '0' <= c and c <= '9'; }
@@ -42,6 +41,11 @@ namespace namedargs {
 
   constexpr bool isident2(char c) {
     return isident1(c) or ('0' <= c and c <= '9');
+  }
+
+  constexpr bool ispunct(char c) {
+    return ('!' <= c and c <= '/') or (':' <= c and c <= '@')
+           or ('[' <= c and c <= '`') or ('{' <= c and c <= '~');
   }
 
   template <class Pred>
@@ -99,6 +103,11 @@ namespace namedargs {
       return sv.substr(pos);
     }
 
+    constexpr std::string_view tokenize_punct(std::string_view sv) {
+      tokens_.push_back({TokenKind::punct, sv.substr(0, 1), {}});
+      return sv.substr(1);
+    }
+
     constexpr std::string_view tokenize() {
       std::string_view sv = input_;
       while (not sv.empty()) {
@@ -120,6 +129,12 @@ namespace namedargs {
         // Identifier
         if (isident1(sv.front())) {
           sv = tokenize_identifier(sv);
+          continue;
+        }
+
+        // Punctuators
+        if (ispunct(sv.front())) {
+          sv = tokenize_punct(sv);
           continue;
         }
       }

@@ -1,10 +1,12 @@
 /// @file fundamental.hpp
 #pragma once
+#include <algorithm>  // std::find_if
 #include <functional> // std::invoke
 #include <span>
 #include <stdexcept> // std::runtime_error
 #include <string>
 #include <string_view>
+#include <variant>
 #include <vector>
 #include <namedargs/fundamental.hpp>
 
@@ -93,6 +95,12 @@ namespace namedargs {
       return toks.subspan(1);
     else
       throw parse_error("unexpected token in namedargs::expect_punct");
+  }
+
+  template <class T, class U>
+  constexpr auto find(const std::vector<std::pair<T, U>>& v, const T& key) {
+    return std::find_if(v.begin(), v.end(),
+                        [&key](const auto& x) { return x.first == key; });
   }
 
   struct ArgParser {
@@ -204,10 +212,22 @@ namespace namedargs {
 
     // assign = ident "=" primary
     constexpr std::span<Token> parse_assign(std::span<Token> toks) {
-      toks = parse_ident(toks);
-      toks = expect_punct("=", toks);
-      toks = parse_primary(toks);
-      return toks;
+      auto [toks2, ident] = parse_ident(toks);
+      toks2 = expect_punct("=", toks2);
+      auto [toks3, arg] = parse_primary(toks2);
+      args_.push_back({std::move(ident), std::move(arg)});
+      return toks3;
+    }
+
+    constexpr std::pair<std::span<Token>, std::string_view>
+    parse_ident(std::span<Token> toks) {
+      if (const auto& tok = toks.front(); tok.kind == TokenKind::ident) {
+        if (auto it = find(args_, tok.sv); it != args_.end())
+          return {toks.subspan(1), tok.sv};
+        else
+          throw parse_error("argument already exists");
+      } else
+        throw parse_error("unexpected token; expecting TokenKind::ident");
     }
 
     // primary = str | num
@@ -215,9 +235,9 @@ namespace namedargs {
     parse_primary(std::span<Token> toks) {
       switch (toks.front().kind) {
       case TokenKind::str:
-        return {toks.subspan(1), toks.sv};
+        return {toks.subspan(1), toks.front().sv};
       case TokenKind::num:
-        return {toks.subspan(1), toks.num};
+        return {toks.subspan(1), toks.front().num};
       default:
         throw parse_error(
           "unexpected token; expecting TokenKind::str or TokenKind::num");

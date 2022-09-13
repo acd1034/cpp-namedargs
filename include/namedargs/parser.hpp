@@ -41,8 +41,12 @@ namespace namedargs {
 
   constexpr bool isdigit(char c) { return '0' <= c and c <= '9'; }
 
+  constexpr bool isupper(char c) { return 'A' <= c and c <= 'Z'; }
+
+  constexpr bool islower(char c) { return 'a' <= c and c <= 'z'; }
+
   constexpr bool isident1(char c) {
-    return ('a' <= c and c <= 'z') or ('A' <= c and c <= 'Z') or c == '_';
+    return isupper(c) or islower(c) or c == '_';
   }
 
   constexpr bool isident2(char c) { return isident1(c) or isdigit(c); }
@@ -130,7 +134,7 @@ namespace namedargs {
     // tokenize
 
     constexpr std::string_view skip_whitespaces(std::string_view sv) {
-      const std::size_t pos = find_if_not(sv, isspace, 1);
+      const std::size_t pos = find_if_not(sv, namedargs::isspace, 1);
       return sv.substr(pos);
     }
 

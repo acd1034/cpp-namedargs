@@ -63,6 +63,38 @@ namespace namedargs {
              : std::make_pair(num, first);
   }
 
+  constexpr std::pair<std::span<Token>, bool> //
+  consume(TokenKind tk, std::span<Token> toks) {
+    if (toks.front().kind == tk)
+      return {toks.subspan(1), true};
+    else
+      return {toks, false};
+  }
+
+  constexpr std::pair<std::span<Token>, bool> //
+  consume_punct(std::string_view punct, std::span<Token> toks) {
+    if (toks.front().kind == TokenKind::punct and toks.front().sv == punct)
+      return {toks.subspan(1), true};
+    else
+      return {toks, false};
+  }
+
+  constexpr std::span<Token> //
+  expect(TokenKind tk, std::span<Token> toks) {
+    if (toks.front().kind == tk)
+      return toks.subspan(1);
+    else
+      throw parse_error("unexpected token in namedargs::expect");
+  }
+
+  constexpr std::span<Token> //
+  expect_punct(std::string_view punct, std::span<Token> toks) {
+    if (toks.front().kind == TokenKind::punct and toks.front().sv == punct)
+      return toks.subspan(1);
+    else
+      throw parse_error("unexpected token in namedargs::expect_punct");
+  }
+
   struct ArgParser {
   private:
     std::string_view input_{};
@@ -153,10 +185,10 @@ namespace namedargs {
 
     // args = stmt?
     constexpr std::span<Token> parse_args(std::span<Token> toks) {
-      if (consume(TokenKind::eof))
-        return toks;
+      if (auto [toks2, consumed] = consume(TokenKind::eof, toks); consumed)
+        return toks2;
       toks = parse_stmt(toks);
-      expect(TokenKind::eof);
+      toks = expect(TokenKind::eof, toks);
       return toks;
     }
 
@@ -164,8 +196,8 @@ namespace namedargs {
     constexpr std::span<Token> parse_stmt(std::span<Token> toks) {
       toks = parse_assign(toks);
       for (;;) {
-        if (consume(","))
-          toks = parse_assign(toks);
+        if (auto [toks2, consumed] = consume_punct(",", toks); consumed)
+          toks = parse_assign(toks2);
         else
           return toks;
       }
@@ -174,7 +206,7 @@ namespace namedargs {
     // assign = ident "=" primary
     constexpr std::span<Token> parse_assign(std::span<Token> toks) {
       toks = parse_ident(toks);
-      expect("=");
+      toks = expect_punct("=", toks);
       toks = parse_primary(toks);
       return toks;
     }

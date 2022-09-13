@@ -3,7 +3,7 @@
 
 # generals
 BreakBeforeBraces: Attach
-ColumnLimit: 100
+ColumnLimit: 80
 CommentPragmas: "^ NO-FORMAT:"
 ContinuationIndentWidth: 2
 IndentWidth: 2

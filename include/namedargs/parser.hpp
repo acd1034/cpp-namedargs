@@ -58,8 +58,8 @@ namespace namedargs {
   }
 
   template <class Pred>
-  constexpr std::size_t find_if_not(std::string_view sv, Pred pred,
-                                    std::size_t pos = 0) {
+  constexpr std::size_t //
+  find_if_not(std::string_view sv, Pred pred, std::size_t pos = 0) {
     for (; pos < sv.size(); ++pos)
       if (not std::invoke(pred, sv[pos]))
         return pos;
@@ -91,18 +91,18 @@ namespace namedargs {
 
   constexpr std::span<Token> //
   expect(TokenKind kind, std::span<Token> toks) {
-    if (toks.front().kind == kind)
-      return toks.subspan(1);
-    else
-      throw parse_error("unexpected token in namedargs::expect");
+    if (toks.front().kind != kind)
+      throw parse_error("unexpected token");
+    return toks.subspan(1);
   }
 
   constexpr std::span<Token> //
   expect_punct(std::string_view punct, std::span<Token> toks) {
-    if (toks.front().kind == TokenKind::punct and toks.front().sv == punct)
-      return toks.subspan(1);
-    else
-      throw parse_error("unexpected token in namedargs::expect_punct");
+    if (toks.front().kind != TokenKind::punct)
+      throw parse_error("unexpected token");
+    if (toks.front().sv != punct)
+      throw parse_error("unexpected punctuator");
+    return toks.subspan(1);
   }
 
   template <class T, class U>
@@ -112,8 +112,8 @@ namespace namedargs {
   }
 
   template <class T, class U>
-  constexpr auto binary_search(const std::vector<std::pair<T, U>>& v,
-                               const T& key) {
+  constexpr auto //
+  binary_search(const std::vector<std::pair<T, U>>& v, const T& key) {
     auto it = std::ranges::lower_bound(v.begin(), v.end(), key, {},
                                        [](const auto& x) { return x.first; });
     if (it == v.end() or key < it->first)

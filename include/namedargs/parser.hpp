@@ -105,6 +105,15 @@ namespace namedargs {
     return toks.subspan(1);
   }
 
+  // Checks if T is assignable from any of variant types
+  template <class T, class U>
+  inline constexpr bool variant_assignable_from_any_v = false;
+
+  template <class T, class... Types>
+  inline constexpr bool
+    variant_assignable_from_any_v<T, std::variant<Types...>> =
+      (std::assignable_from<T, Types> or ...);
+
   template <class T, class U>
   constexpr auto find(const std::vector<std::pair<T, U>>& v, const T& key) {
     return std::find_if(v.begin(), v.end(),
@@ -277,22 +286,18 @@ namespace namedargs {
 
     template <class T, class U>
     constexpr T& assign_or(T& out, std::string_view key, U&& value) const {
+      static_assert(variant_assignable_from_any_v<T&, ArgType>);
       auto it = binary_search(args_, key);
       if (it == args_.end())
         return out = std::forward<U>(value);
-      const auto& v = it->second;
-      // clang-format off
-      static_assert(std::assignable_from<T&, decltype(std::get<0>(v))> or
-                    std::assignable_from<T&, decltype(std::get<1>(v))>);
-      // clang-format on
-      if (v.index() == 0) {
-        if constexpr (std::assignable_from<T&, decltype(std::get<0>(v))>)
-          return out = std::get<0>(v);
-      } else {
-        if constexpr (std::assignable_from<T&, decltype(std::get<1>(v))>)
-          return out = std::get<1>(v);
-      }
-      throw parse_error("value is not assignable");
+      return std::visit(
+        [&out](const auto& x) -> T& {
+          if constexpr (std::assignable_from<T&, decltype(x)>)
+            return out = x;
+          else
+            throw parse_error("value is not assignable");
+        },
+        it->second);
     }
   };
 

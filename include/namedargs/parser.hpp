@@ -73,8 +73,8 @@ namespace namedargs {
   }
 
   constexpr std::pair<std::span<Token>, bool> //
-  consume(TokenKind tk, std::span<Token> toks) {
-    if (toks.front().kind == tk)
+  consume(TokenKind kind, std::span<Token> toks) {
+    if (toks.front().kind == kind)
       return {toks.subspan(1), true};
     else
       return {toks, false};
@@ -89,8 +89,8 @@ namespace namedargs {
   }
 
   constexpr std::span<Token> //
-  expect(TokenKind tk, std::span<Token> toks) {
-    if (toks.front().kind == tk)
+  expect(TokenKind kind, std::span<Token> toks) {
+    if (toks.front().kind == kind)
       return toks.subspan(1);
     else
       throw parse_error("unexpected token in namedargs::expect");
@@ -141,7 +141,7 @@ namespace namedargs {
     constexpr std::string_view tokenize_number(std::string_view sv) {
       const char* start = sv.data();
       const auto [num, ptr] = namedargs::from_chars(start, start + sv.size());
-      // TODO: throw parse_error
+      // TODO: throw parse_error("namedargs::from_chars failed")
       const std::size_t size = icast<std::size_t>(ptr - start);
       tokens_.push_back({TokenKind::num, sv.substr(0, size), num});
       return sv.substr(size);
@@ -194,7 +194,7 @@ namespace namedargs {
         }
 
         // Punctuators
-        if (ispunct(sv.front())) {
+        if (namedargs::ispunct(sv.front())) {
           sv = tokenize_punct(sv);
           continue;
         }

@@ -230,32 +230,30 @@ namespace namedargs {
 
     // assign = ident "=" primary
     constexpr std::span<Token> parse_assign(std::span<Token> toks) {
-      auto [toks2, ident] = parse_ident(toks);
+      auto [ident, toks2] = parse_ident(toks);
       toks2 = expect_punct("=", toks2);
-      auto [toks3, arg] = parse_primary(toks2);
+      auto [arg, toks3] = parse_primary(toks2);
       args_.push_back({std::move(ident), std::move(arg)});
       return toks3;
     }
 
-    constexpr std::pair<std::span<Token>, std::string_view>
+    constexpr std::pair<std::string_view, std::span<Token>>
     parse_ident(std::span<Token> toks) {
-      if (const auto& tok = toks.front(); tok.kind == TokenKind::ident) {
-        if (auto it = find(args_, tok.sv); it == args_.end())
-          return {toks.subspan(1), tok.sv};
-        else
-          throw parse_error("argument already exists");
-      } else
+      if (toks.front().kind != TokenKind::ident)
         throw parse_error("unexpected token; expecting TokenKind::ident");
+      if (auto it = find(args_, toks.front().sv); it != args_.end())
+        throw parse_error("argument already exists");
+      return {toks.front().sv, toks.subspan(1)};
     }
 
     // primary = str | num
-    constexpr std::pair<std::span<Token>, ArgType>
+    constexpr std::pair<ArgType, std::span<Token>>
     parse_primary(std::span<Token> toks) {
       switch (toks.front().kind) {
       case TokenKind::str:
-        return {toks.subspan(1), toks.front().sv};
+        return {toks.front().sv, toks.subspan(1)};
       case TokenKind::num:
-        return {toks.subspan(1), toks.front().num};
+        return {toks.front().num, toks.subspan(1)};
       default:
         throw parse_error(
           "unexpected token; expecting TokenKind::str or TokenKind::num");

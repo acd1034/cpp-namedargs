@@ -1,6 +1,6 @@
 /// @file fundamental.hpp
 #pragma once
-#include <algorithm>  // std::find_if
+#include <algorithm> // std::min, std::find_if, std::sort, std::ranges::lower_bound
 #include <functional> // std::invoke
 #include <optional>
 #include <span>
@@ -134,7 +134,8 @@ namespace namedargs {
     // tokenize
 
     constexpr std::string_view skip_whitespaces(std::string_view sv) {
-      const std::size_t pos = find_if_not(sv, namedargs::isspace, 1);
+      const std::size_t pos =
+        std::min(find_if_not(sv, namedargs::isspace, 1), sv.size());
       return sv.substr(pos);
     }
 
@@ -157,7 +158,7 @@ namespace namedargs {
     }
 
     constexpr std::string_view tokenize_identifier(std::string_view sv) {
-      const std::size_t pos = find_if_not(sv, isident2, 1);
+      const std::size_t pos = std::min(find_if_not(sv, isident2, 1), sv.size());
       tokens_.push_back({TokenKind::ident, sv.substr(0, pos), {}});
       return sv.substr(pos);
     }
@@ -241,7 +242,7 @@ namespace namedargs {
     parse_ident(std::span<Token> toks) {
       if (toks.front().kind != TokenKind::ident)
         throw parse_error("unexpected token; expecting TokenKind::ident");
-      if (auto it = find(args_, toks.front().sv); it != args_.end())
+      if (auto it = namedargs::find(args_, toks.front().sv); it != args_.end())
         throw parse_error("argument already exists");
       return {toks.front().sv, toks.subspan(1)};
     }
@@ -274,9 +275,8 @@ namespace namedargs {
       });
     }
 
-    template <class K>
-    constexpr std::pair<decltype(args_.begin()), bool> //
-    find(const K& key) {
+    constexpr std::pair<decltype(args_.cbegin()), bool> //
+    find(std::string_view key) const {
       auto it = std::ranges::lower_bound(args_.begin(), args_.end(), key, {},
                                          [](const auto& x) { return x.first; });
       if (it == args_.end() or key < it->first)
@@ -285,8 +285,8 @@ namespace namedargs {
         return {it, true};
     }
 
-    template <class K, class T, class U>
-    constexpr T& assign_or(const K& key, T& out, U&& value) const {
+    template <class T, class U>
+    constexpr T& assign_or(std::string_view key, T& out, U&& value) const {
       static_assert(variant_assignable_from_any_v<T&, ArgType>);
       if (auto [it, found] = find(key); found)
         return std::visit(

@@ -105,6 +105,12 @@ namespace namedargs {
     return toks.subspan(1);
   }
 
+  template <class T, class U>
+  constexpr auto find(const std::vector<std::pair<T, U>>& v, const T& key) {
+    return std::find_if(v.begin(), v.end(),
+                        [&key](const auto& x) { return x.first == key; });
+  }
+
   // Checks if T is assignable from any of variant types
   template <class T, class U>
   inline constexpr bool variant_assignable_from_any_v = false;
@@ -113,22 +119,6 @@ namespace namedargs {
   inline constexpr bool
     variant_assignable_from_any_v<T, std::variant<Types...>> =
       (std::assignable_from<T, Types> or ...);
-
-  template <class T, class U>
-  constexpr auto find(const std::vector<std::pair<T, U>>& v, const T& key) {
-    return std::find_if(v.begin(), v.end(),
-                        [&key](const auto& x) { return x.first == key; });
-  }
-
-  template <class T, class U>
-  constexpr auto //
-  binary_search(const std::vector<std::pair<T, U>>& v, const T& key) {
-    auto it = std::ranges::lower_bound(v.begin(), v.end(), key, {},
-                                       [](const auto& x) { return x.first; });
-    if (it == v.end() or key < it->first)
-      return v.end();
-    return it;
-  }
 
   struct ArgParser {
   private:
@@ -284,20 +274,31 @@ namespace namedargs {
       });
     }
 
-    template <class T, class U>
-    constexpr T& assign_or(T& out, std::string_view key, U&& value) const {
+    template <class K>
+    constexpr std::pair<decltype(args_.begin()), bool> //
+    find(const K& key) {
+      auto it = std::ranges::lower_bound(args_.begin(), args_.end(), key, {},
+                                         [](const auto& x) { return x.first; });
+      if (it == args_.end() or key < it->first)
+        return {args_.end(), false};
+      else
+        return {it, true};
+    }
+
+    template <class K, class T, class U>
+    constexpr T& assign_or(const K& key, T& out, U&& value) const {
       static_assert(variant_assignable_from_any_v<T&, ArgType>);
-      auto it = binary_search(args_, key);
-      if (it == args_.end())
+      if (auto [it, found] = find(key); found)
+        return std::visit(
+          [&out](const auto& x) -> T& {
+            if constexpr (std::assignable_from<T&, decltype(x)>)
+              return out = x;
+            else
+              throw parse_error("value is not assignable");
+          },
+          it->second);
+      else
         return out = std::forward<U>(value);
-      return std::visit(
-        [&out](const auto& x) -> T& {
-          if constexpr (std::assignable_from<T&, decltype(x)>)
-            return out = x;
-          else
-            throw parse_error("value is not assignable");
-        },
-        it->second);
     }
   };
 

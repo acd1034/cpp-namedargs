@@ -263,7 +263,7 @@ namespace namedargs {
     }
 
     template <class T, class U>
-    constexpr T& assign_or(std::string_view key, T& out, U&& value) const {
+    constexpr T& assign_or(T& out, std::string_view key, U&& value) const {
       static_assert(variant_assignable_from_any_v<T&, ArgType>);
       if (auto [it, found] = find(key); found)
         return std::visit(

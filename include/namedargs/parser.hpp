@@ -2,6 +2,7 @@
 #pragma once
 #include <algorithm>  // std::find_if
 #include <functional> // std::invoke
+#include <optional>
 #include <span>
 #include <stdexcept> // std::runtime_error
 #include <string>
@@ -72,20 +73,20 @@ namespace namedargs {
              : std::make_pair(num, first);
   }
 
-  constexpr std::pair<std::span<Token>, bool> //
+  constexpr std::optional<std::span<Token>> //
   consume(TokenKind kind, std::span<Token> toks) {
     if (toks.front().kind == kind)
-      return {toks.subspan(1), true};
+      return toks.subspan(1);
     else
-      return {toks, false};
+      return std::nullopt;
   }
 
-  constexpr std::pair<std::span<Token>, bool> //
+  constexpr std::optional<std::span<Token>> //
   consume_punct(std::string_view punct, std::span<Token> toks) {
     if (toks.front().kind == TokenKind::punct and toks.front().sv == punct)
-      return {toks.subspan(1), true};
+      return toks.subspan(1);
     else
-      return {toks, false};
+      return std::nullopt;
   }
 
   constexpr std::span<Token> //
@@ -209,8 +210,8 @@ namespace namedargs {
 
     // args = stmt?
     constexpr std::span<Token> parse_args(std::span<Token> toks) {
-      if (auto [toks2, consumed] = consume(TokenKind::eof, toks); consumed)
-        return toks2;
+      if (auto toks2 = consume(TokenKind::eof, toks))
+        return *toks2;
       toks = parse_stmt(toks);
       toks = expect(TokenKind::eof, toks);
       return toks;
@@ -220,8 +221,8 @@ namespace namedargs {
     constexpr std::span<Token> parse_stmt(std::span<Token> toks) {
       toks = parse_assign(toks);
       for (;;) {
-        if (auto [toks2, consumed] = consume_punct(",", toks); consumed)
-          toks = parse_assign(toks2);
+        if (auto toks2 = consume_punct(",", toks))
+          toks = parse_assign(*toks2);
         else
           return toks;
       }

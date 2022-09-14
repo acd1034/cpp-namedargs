@@ -23,8 +23,4 @@ namespace namedargs {
     assert(std::in_range<To>(from));
     return static_cast<To>(from);
   }
-
-  /// similar_to
-  template <class T, class U>
-  concept similar_to = std::is_same_v<std::remove_cvref_t<T>, std::remove_cvref_t<U>>;
 } // namespace namedargs

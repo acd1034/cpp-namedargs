@@ -280,7 +280,8 @@ namespace namedargs {
   };
 
   template <class T>
-  constexpr T parse_args(std::string_view sv) {
+  constexpr auto parse_args(std::string_view sv)
+    -> decltype(ArgParserTraits<T>::convert(std::declval<ArgParser>())) {
     ArgParser parser(sv);
     parser.execute();
     return ArgParserTraits<T>::convert(parser);

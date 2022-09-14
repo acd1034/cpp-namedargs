@@ -149,10 +149,11 @@ namespace namedargs {
     }
 
     constexpr std::string_view tokenize_string_literal(std::string_view sv) {
-      const std::size_t pos = sv.find_first_of('\'', 1);
+      sv = sv.substr(1);
+      const std::size_t pos = sv.find_first_of('\'');
       if (pos == std::string_view::npos)
         throw parse_error("unclosed string literal");
-      tokens_.push_back({TokenKind::str, sv.substr(1, pos - 1), {}});
+      tokens_.push_back({TokenKind::str, sv.substr(0, pos), {}});
       return sv.substr(pos + 1);
     }
 

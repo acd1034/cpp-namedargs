@@ -9,8 +9,9 @@
 #include <string_view>
 #include <variant>
 #include <vector>
-#include <namedargs/fundamental.hpp>
+#include <namedargs/ctype.hpp>
 #include <namedargs/from_chars.hpp>
+#include <namedargs/fundamental.hpp>
 
 namespace namedargs {
   template <class T>
@@ -36,27 +37,6 @@ namespace namedargs {
     parse_error(const parse_error&) noexcept = default;
     ~parse_error() noexcept override = default;
   };
-
-  constexpr bool isspace(char c) {
-    return ('\t' <= c and c <= '\r') or c == ' ';
-  }
-
-  constexpr bool isdigit(char c) { return '0' <= c and c <= '9'; }
-
-  constexpr bool isupper(char c) { return 'A' <= c and c <= 'Z'; }
-
-  constexpr bool islower(char c) { return 'a' <= c and c <= 'z'; }
-
-  constexpr bool isident1(char c) {
-    return isupper(c) or islower(c) or c == '_';
-  }
-
-  constexpr bool isident2(char c) { return isident1(c) or isdigit(c); }
-
-  constexpr bool ispunct(char c) {
-    return ('!' <= c and c <= '/') or (':' <= c and c <= '@')
-           or ('[' <= c and c <= '`') or ('{' <= c and c <= '~');
-  }
 
   template <class Pred>
   constexpr std::size_t //
@@ -134,10 +114,11 @@ namespace namedargs {
     }
 
     constexpr std::string_view tokenize_number(std::string_view sv) {
-      const char* start = sv.data();
+      const char* first = sv.data();
       std::int64_t num{};
-      if (auto [ptr, ec] = from_chars(start, start+sv.size(), num); ec == std::errc{}) {
-        const std::size_t size = icast<std::size_t>(ptr - start);
+      if (auto [ptr, ec] = from_chars(first, first + sv.size(), num);
+          ec == std::errc{}) {
+        const std::size_t size = icast<std::size_t>(ptr - first);
         tokens_.push_back({TokenKind::num, sv.substr(0, size), num});
         return sv.substr(size);
       } else

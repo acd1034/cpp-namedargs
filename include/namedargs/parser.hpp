@@ -10,6 +10,7 @@
 #include <variant>
 #include <vector>
 #include <namedargs/fundamental.hpp>
+#include <namedargs/from_chars.hpp>
 
 namespace namedargs {
   template <class T>
@@ -64,13 +65,6 @@ namespace namedargs {
       if (not std::invoke(pred, sv[pos]))
         return pos;
     return std::string_view::npos;
-  }
-
-  constexpr std::pair<std::int64_t, const char*>
-  from_chars(const char* first, const char* last, std::int64_t num = 0) {
-    return first != last and namedargs::isdigit(*first)
-             ? namedargs::from_chars(first + 1, last, 10 * num + (*first - '0'))
-             : std::make_pair(num, first);
   }
 
   constexpr std::optional<std::span<Token>> //
@@ -141,11 +135,13 @@ namespace namedargs {
 
     constexpr std::string_view tokenize_number(std::string_view sv) {
       const char* start = sv.data();
-      const auto [num, ptr] = namedargs::from_chars(start, start + sv.size());
-      // TODO: throw parse_error("namedargs::from_chars failed")
-      const std::size_t size = icast<std::size_t>(ptr - start);
-      tokens_.push_back({TokenKind::num, sv.substr(0, size), num});
-      return sv.substr(size);
+      std::int64_t num{};
+      if (auto [ptr, ec] = from_chars(start, start+sv.size(), num); ec == std::errc{}) {
+        const std::size_t size = icast<std::size_t>(ptr - start);
+        tokens_.push_back({TokenKind::num, sv.substr(0, size), num});
+        return sv.substr(size);
+      } else
+        throw parse_error("conversion from chars to integer failed");
     }
 
     constexpr std::string_view tokenize_string_literal(std::string_view sv) {

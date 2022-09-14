@@ -99,7 +99,7 @@ namespace namedargs {
   constexpr std::span<Token> //
   expect_punct(std::string_view punct, std::span<Token> toks) {
     if (toks.front().kind != TokenKind::punct)
-      throw parse_error("unexpected token");
+      throw parse_error("unexpected token; expecting TokenKind::punct");
     if (toks.front().sv != punct)
       throw parse_error("unexpected punctuator");
     return toks.subspan(1);
